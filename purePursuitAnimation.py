@@ -32,14 +32,14 @@ path1 = [[0.0, 0.0], [0.571194595265405, -0.4277145118491421], [1.14175372801428
          [0.571194595265405, -0.4277145118491421]]
 
 global currentPos, currentHeading, lastFoundIndex, lookAheadDis, linearVel, pi, fig, trajectory_lines, trajectory_line
-global heading_lines, heading_line, connection_lines, connection_line, poses, pose, dt, xs, ys, using_rotation, path
+global heading_lines, heading_line, connection_lines, connection_line, poses, pose, dt, xs, ys, using_rotation, path, highlight_waypoint
 
 class Animation:
     def __init__(self):
         # THIS IS DIFFERENT THAN BEFORE! initialize variables here
         # you can also change the Kp constant which is located at line 113
         global currentPos, currentHeading, lastFoundIndex, lookAheadDis, linearVel, pi, fig, trajectory_lines
-        global trajectory_line, heading_lines, heading_line, connection_lines, connection_line, poses, pose, dt, xs, ys, using_rotation, path
+        global trajectory_line, heading_lines, heading_line, connection_lines, connection_line, poses, pose, dt, xs, ys, using_rotation, path, highlight_waypoint
 
         currentPos = [0, 0]
         currentHeading = 330
@@ -63,6 +63,8 @@ class Animation:
         heading_line = plt.plot([], '-', color='red')[0]
         connection_line = plt.plot([], '-', color='green')[0]
         pose = plt.plot([], 'o', color='black', markersize=10)[0]
+        highlight_waypoint = plt.plot(0, 0, "o", color="yellow")[0]
+        highlight_waypoint.set_visible(False)
 
         # other setup, stationary stuff for example
         # plt.plot([initX], [initY], 'x',color='red',markersize=10)
@@ -85,7 +87,7 @@ class Animation:
         callback = Buttons()
 
         locBWaypoints = plt.axes([0.61, 0.01, 0.175, 0.075])
-        bWaypoints = Button(locBWaypoints, 'Add Waypoints', color='red', hovercolor="lightcoral")
+        bWaypoints = Button(locBWaypoints, 'Add Waypoints')
         bWaypoints.on_clicked(callback.addWayPoints)
 
         locBReset = plt.axes([0.8, 0.01, 0.1, 0.075])
@@ -239,6 +241,7 @@ class Buttons:
         self.remove_waypoints_pressed = False
         self.is_dragging = False
         self.waypoint_selector = -1
+        self.INTERACTION_DIST = 0.5
 
     def addWayPoints(self, event):
         global bWaypoints, b_remove_waypoints
@@ -258,13 +261,13 @@ class Buttons:
         button.color = color1
         button.hovercolor = color2
 
-    def remove_waypoint(self, event):
+    def remove_graph_waypoint(self, event):
         if len(path1) <= 1:
             self.reset_graph()
             return
 
         ndx, distance = self.find_nearest_waypoint([event.xdata, event.ydata], path1)
-        if distance < 1:
+        if distance < self.INTERACTION_DIST:
             path1.pop(ndx)
 
     def update_path(self):
@@ -276,15 +279,23 @@ class Buttons:
             line.set_data(path_for_graph[:, 0], path_for_graph[:, 1])  # Set the new path data
 
     def when_dragging(self, event):
-        if self.is_dragging and event.inaxes:
-            if self.add_waypoints_pressed:
-                path1.append([event.xdata, event.ydata])
-            if self.remove_waypoints_pressed:
-                self.remove_waypoint(event)
+        if event.inaxes == fig.axes[0]:
+            if self.is_dragging:
+                if self.add_waypoints_pressed:
+                    path1.append([event.xdata, event.ydata])
+                if self.remove_waypoints_pressed:
+                    self.remove_graph_waypoint(event)
 
-            self.update_path()
+                self.update_path()
+            else:
+                self.update_selector(event)
+                if self.waypoint_selector > -1:
+                    highlight_waypoint.set_data([path1[self.waypoint_selector][0]], [path1[self.waypoint_selector][1]])
+                    highlight_waypoint.set_visible(True)
+                else:
+                    highlight_waypoint.set_visible(False)
 
-            plt.draw()
+        plt.draw()
 
     def on_release(self, event):
         self.is_dragging = False
@@ -297,45 +308,51 @@ class Buttons:
         path1 = []
         for line in path:
             line.set_data([], [])
-        xs = []
-        ys = []
-        trajectory_line.set_data([], [])
+        self.clear_graph_trajectory_lines()
         plt.draw()
 
     def on_mouse_click(self, event):
         global path1, path
         if event.inaxes == fig.axes[0]:
-            if self.add_waypoints_pressed:
-                # Append the clicked point as a tuple/list
-                # print(f"{event.xdata}, {event.ydata}")
-                self.is_dragging = True
-                path1.append([event.xdata, event.ydata])  # Use append to add a new point as a list
+            if event.button == 1:
+                if self.add_waypoints_pressed:
+                    # Append the clicked point as a tuple/list
+                    # print(f"{event.xdata}, {event.ydata}")
+                    self.is_dragging = True
+                    path1.append([event.xdata, event.ydata])  # Use append to add a new point as a list
 
-                self.update_path()
+                    self.update_path()
 
-                # print("click")
-                plt.draw()  # Ensure the plot updates after the click
-            elif self.remove_waypoints_pressed:
-                # print("click")
-                # print(self.find_nearest_waypoint([event.xdata, event.ydata], path1))
-                self.is_dragging = True
+                    # print("click")
+                    plt.draw()  # Ensure the plot updates after the click
+                elif self.remove_waypoints_pressed:
+                    # print("click")
+                    # print(self.find_nearest_waypoint([event.xdata, event.ydata], path1))
+                    self.is_dragging = True
 
-                if len(path1) <= 1:
-                    self.reset_graph()
-                    return
+                    self.remove_graph_waypoint(event)
 
-                ndx, distance = self.find_nearest_waypoint([event.xdata, event.ydata], path1)
-                if distance < 1:
-                    path1.pop(ndx)
+                    self.update_path()
+            else:
+                self.update_selector(event)
 
-                self.update_path()
+    def update_selector(self, event):
+        if len(path1) >= 1:
+            ndx, distance = self.find_nearest_waypoint([event.xdata, event.ydata], path1)
+            if distance < self.INTERACTION_DIST:
+                self.waypoint_selector = ndx
+                return
+        self.waypoint_selector = -1
 
     def clear_trajectory_lines(self, event):
+        self.clear_graph_trajectory_lines()
+        plt.draw()
+
+    def clear_graph_trajectory_lines(self):
         global xs, ys, trajectory_line
         xs = []
         ys = []
         trajectory_line.set_data([], [])
-        plt.draw()
 
     def remove_waypoint(self, event):
         global b_remove_waypoints, bWaypoints
