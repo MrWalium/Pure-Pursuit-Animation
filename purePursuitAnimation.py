@@ -6,6 +6,8 @@ from matplotlib.widgets import Button
 from functools import partial
 from IPython import display
 
+from main import pathForGraph
+
 plt.rcParams['animation.writer'] = 'ffmpeg'
 
 path1 = [[0.0, 0.0], [0.571194595265405, -0.4277145118491421], [1.1417537280142898, -0.8531042347260006],
@@ -64,8 +66,8 @@ class Animation:
         # other setup, stationary stuff for example
         # plt.plot([initX], [initY], 'x',color='red',markersize=10)
         # plt.plot([path1[-1][0]], [path1[-1][1]], 'x',color='red',markersize=10)
-        self.pathForGraph = np.array(path1)
-        path = plt.plot(self.pathForGraph[:, 0], self.pathForGraph[:, 1], '--', color='grey')
+        self.pathForGraph = np.array(convert_poses(path1))
+        path = plt.plot(pathForGraph[:, 0], pathForGraph[:, 1], '--', color='grey')
         # plt.plot(pathForGraph[:, 0], pathForGraph[:, 1], 'o', color='purple', markersize=2)
 
         highlight_waypoint = plt.plot(0, 0, "o", color="yellow")[0]
@@ -145,6 +147,7 @@ class PurePursuit:
         # use for loop to search intersections
         lastFoundIndex = LFindex
         intersectFound = False
+
         startingIndex = lastFoundIndex
 
         for i in range(startingIndex, len(path) - 1):
@@ -185,7 +188,7 @@ class PurePursuit:
                     if ((minX <= sol_pt1[0] <= maxX) and (minY <= sol_pt1[1] <= maxY)) and (
                             (minX <= sol_pt2[0] <= maxX) and (minY <= sol_pt2[1] <= maxY)):
                         # make the decision by compare the distance between the intersections and the next point in path
-                        if self.pt_to_pt_distance(sol_pt1, path[i + 1]) < self.pt_to_pt_distance(sol_pt2, path[i + 1]):
+                        if self.pt_to_pt_distance(sol_pt1, path[i + 1]) < self.pt_to_pt_distance(sol_pt2, path[i + 1]) :
                             goalPt = sol_pt1
                         else:
                             goalPt = sol_pt2
@@ -275,18 +278,19 @@ class Buttons:
     def add_graph_waypoint(self, event):
         self.update_visible_selector(event)
         if self.waypoint_selector == -1:
-            path1.append([event.xdata, event.ydata])
+            path1.append(Waypoint(event.xdata, event.ydata))
         else:
-            path1.insert(self.waypoint_selector + 1, [event.xdata, event.ydata])
+            path1.insert(self.waypoint_selector + 1, Waypoint(event.xdata, event.ydata))
             self.waypoint_selector += 1
 
     def update_path(self):
         # Convert path1 to a NumPy array of shape (N, 2)
-        path_for_graph = np.array(path1)
+        path_for_graph = np.array(convert_poses(path1))
 
         # Update the plot with the new path
-        for line in path:
-            line.set_data(path_for_graph[:, 0], path_for_graph[:, 1])  # Set the new path data
+        if len(path1) > 0:
+            for line in path:
+                line.set_data(path_for_graph[:, 0], path_for_graph[:, 1])  # Set the new path data
 
     def when_dragging(self, event):
         if event.inaxes == fig.axes[0]:
@@ -389,7 +393,7 @@ class Buttons:
 
     def find_nearest_waypoint(self, current_position, waypoints):
         # Convert waypoints to a NumPy array if it's not already
-        waypoints = np.array(waypoints)
+        waypoints = np.array(convert_poses(waypoints))
 
         # Handle the edge case where there are no waypoints
         if len(waypoints) == 0:
@@ -403,6 +407,20 @@ class Buttons:
 
         return nearest_index, distances[nearest_index]
 
+class Waypoint:
+    def __init__(self, x=0, y=0, is_anchor=False):
+        self.x = x
+        self.y = y
+        self.is_anchor = is_anchor
+
+    def __getitem__(self, item):
+        return self.x if item == 0 else self.y
+
+    def get_pos(self):
+        return [self.x, self.y]
+
+def convert_poses(waypoints):
+    return [waypoint.get_pos() for waypoint in waypoints]
 
 def pure_pursuit_animation(frame):
     # define globals
@@ -411,6 +429,8 @@ def pure_pursuit_animation(frame):
 
     # for the animation to loop
     if lastFoundIndex >= len(path1) - 2: lastFoundIndex = 0
+    # if len(path1) > 0:
+    #     print(f"{lastFoundIndex}, {path1[0]}")
 
     # call pure_pursuit_step to get info
     if len(path1) > 0:
@@ -420,7 +440,7 @@ def pure_pursuit_animation(frame):
 
         # model: 200rpm drive with 18" width
         #               rpm   /s  circ   feet
-        maxLinVelfeet = 200 / 60 * pi * 4 / 12
+        maxLinVelfeet = 200 / 60 * pi * 4 / (12)
         #               rpm   /s  center angle   deg
         maxTurnVelDeg = 200 / 60 * pi * 4 / 9 * 180 / pi
 
@@ -446,6 +466,8 @@ def pure_pursuit_animation(frame):
         trajectory_line.set_data(xs, ys)
 
 def main():
+    global path1;
+    path1 = [Waypoint(x, y) for x, y in path1]
     animationObj = Animation()
     animationObj.showAnimation()
 
