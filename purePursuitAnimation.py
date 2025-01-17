@@ -31,91 +31,104 @@ path1 = [[0.0, 0.0], [0.571194595265405, -0.4277145118491421], [1.14175372801428
          [-1.1413833971013372, 0.8517589252820573], [-0.5710732645795573, 0.4272721367616211], [0, 0],
          [0.571194595265405, -0.4277145118491421]]
 
-global currentPos, currentHeading, lastFoundIndex, lookAheadDis, linearVel, pi, fig, trajectory_lines, trajectory_line
-global heading_lines, heading_line, connection_lines, connection_line, poses, pose, dt, xs, ys, using_rotation, path, highlight_waypoint
+
+class Robot:
+    def __init__(self):
+        self.current_pos = [0, 0]
+        self.current_heading = 330
+        self.last_found_index = 0
+        self.next_point_ndx = 1
+        self.look_ahead_dist = 0.8
+        self.linear_vel = 100
+        self.dt = 50
+
+    def __getitem__(self, item):
+        return self.current_pos[0] if item == 0 else self.current_pos[1]
+
+    def __setitem__(self, key, value):
+        self.current_pos[key] = value
+
 
 class Animation:
     def __init__(self):
-        # THIS IS DIFFERENT THAN BEFORE! initialize variables here
-        # you can also change the Kp constant which is located at line 113
-        global currentPos, currentHeading, lastFoundIndex, lookAheadDis, linearVel, pi, fig, trajectory_lines
-        global trajectory_line, heading_lines, heading_line, connection_lines, connection_line, poses, pose, dt, xs, ys, using_rotation, path, highlight_waypoint, next_point_ndx
-
-        currentPos = [0, 0]
-        currentHeading = 330
-        lastFoundIndex = 0
-        next_point_ndx = 1
-        lookAheadDis = 0.8
-        linearVel = 100
-
         # set this to true if you use rotations
-        using_rotation = False
+        self.using_rotation = False
 
         # this determines how long (how many frames) the animation will run. 400 frames takes around 30 seconds.
-        self.numOfFrames = 400
+        self.num_of_frames = 400
+
+        self.robot = Robot()
 
         # the code below is for animation
         # -------------------------------------------------------------------------------------------------------------------------------------------------------------------
         # for the sake of my sanity
-        pi = np.pi
+        self.pi = np.pi
         # animation
-        fig = plt.figure()
-        trajectory_line = plt.plot([], '-', color='orange', linewidth=4)[0]
+        self.fig = plt.figure()
+        self.trail_line = plt.plot([], '-', color='orange', linewidth=4)[0]
 
         # other setup, stationary stuff for example
         # plt.plot([initX], [initY], 'x',color='red',markersize=10)
         # plt.plot([path1[-1][0]], [path1[-1][1]], 'x',color='red',markersize=10)
-        self.pathForGraph = np.array(convert_poses(path1))
-        path = plt.plot(self.pathForGraph[:, 0], self.pathForGraph[:, 1], '--', color='grey')
+        path_for_graph = np.array(convert_poses(path1))
+        self.path = plt.plot(path_for_graph[:, 0], path_for_graph[:, 1], '--', color='grey')
         # plt.plot(pathForGraph[:, 0], pathForGraph[:, 1], 'o', color='purple', markersize=2)
 
-        highlight_waypoint = plt.plot(0, 0, "o", color="yellow")[0]
-        highlight_waypoint.set_visible(False)
-        heading_line = plt.plot([], '-', color='red')[0]
-        connection_line = plt.plot([], '-', color='green')[0]
-        pose = plt.plot([], 'o', color='black', markersize=10)[0]
+        self.highlight_waypoint = plt.plot(0, 0, "o", color="yellow")[0]
+        self.highlight_waypoint.set_visible(False)
+        self.heading_line = plt.plot([], '-', color='red')[0]
+        self.connection_line = plt.plot([], '-', color='green')[0]
+        self.pose = plt.plot([], 'o', color='black', markersize=10)[0]
 
         plt.axis("scaled")
         plt.xlim(-6, 6)
         plt.ylim(-4, 4)
-        dt = 50
-        xs = [currentPos[0]]
-        ys = [currentPos[1]]
-
+        self.trail_line_x = [self.robot[0]]
+        self.trail_line_y = [self.robot[1]]
 
     def showAnimation(self):
-        global bWaypoints, locBWaypoints, b_remove_waypoints
-        anim = animation.FuncAnimation(fig, pure_pursuit_animation, frames=self.numOfFrames, interval=50)
-        callback = Buttons()
+        bound_func = partial(pure_pursuit_animation, robot=self.robot, heading_line=self.heading_line, pose=self.pose,
+                             connection_line=self.connection_line, trail_line_x=self.trail_line_x,
+                             trail_line_y=self.trail_line_y, trail_line=self.trail_line,
+                             pi=self.pi, using_rotation=self.using_rotation)
+        anim = animation.FuncAnimation(self.fig, bound_func, frames=self.num_of_frames, interval=50)
 
-        locBWaypoints = plt.axes([0.61, 0.01, 0.175, 0.075])
-        bWaypoints = Button(locBWaypoints, 'Add Waypoints')
-        bWaypoints.on_clicked(callback.addWayPoints)
+        # callback = Buttons()
+        #
+        # pos_add_waypoints = plt.axes([0.61, 0.01, 0.175, 0.075])
+        # add_waypoints = Button(pos_add_waypoints, 'Add Waypoints')
+        # add_waypoints.on_clicked(callback.addWayPoints)
+        #
+        # pos_reset = plt.axes([0.8, 0.01, 0.1, 0.075])
+        # button_reset = Button(pos_reset, 'Reset')
+        # button_reset.on_clicked(callback.reset)
+        #
+        # pos_clear_trail = plt.axes([0.21, 0.01, 0.13, 0.075])
+        # button_clear_trail = Button(pos_clear_trail, 'Clear Trail')
+        # button_clear_trail.on_clicked(callback.clear_trajectory_lines)
+        #
+        # pos_remove_waypoints = plt.axes([0.36, 0.01, 0.23, 0.075])
+        # remove_waypoints = Button(pos_remove_waypoints, 'Remove Waypoints')
+        # remove_waypoints.on_clicked(callback.remove_waypoint)
+        #
+        # self.fig.canvas.mpl_connect("button_press_event", callback.on_mouse_click)
+        # self.fig.canvas.mpl_connect('motion_notify_event', callback.when_dragging)
+        # self.fig.canvas.mpl_connect('button_release_event', callback.on_release)
 
-        locBReset = plt.axes([0.8, 0.01, 0.1, 0.075])
-        b_reset = Button(locBReset, 'Reset')
-        b_reset.on_clicked(callback.reset)
-
-        loc_clear_trail = plt.axes([0.21, 0.01, 0.13, 0.075])
-        b_clear_trail = Button(loc_clear_trail, 'Clear Trail')
-        b_clear_trail.on_clicked(callback.clear_trajectory_lines)
-
-        loc_remove_waypoints = plt.axes([0.36, 0.01, 0.23, 0.075])
-        b_remove_waypoints = Button(loc_remove_waypoints, 'Remove Waypoints')
-        b_remove_waypoints.on_clicked(callback.remove_waypoint)
-
-        fig.canvas.mpl_connect("button_press_event", callback.on_mouse_click)
-        fig.canvas.mpl_connect('motion_notify_event', callback.when_dragging)
-        fig.canvas.mpl_connect('button_release_event', callback.on_release)
-
-        plt.show()
         # video = anim.to_html5_video()
         # html = display.HTML(video)
         # display.display(html)
+
+        plt.show()
         plt.close()
 
-class PurePursuit:
-    # helper functions
+
+class Buttons:
+    def __init__(self):
+        self.a = 1
+
+
+class Pure_Pursuit:
     def pt_to_pt_distance(self, pt1, pt2):
         distance = np.sqrt((pt2[0] - pt1[0]) ** 2 + (pt2[1] - pt1[1]) ** 2)
         return distance
@@ -133,32 +146,29 @@ class PurePursuit:
     # the LFindex takes in the value of lastFoundIndex as input. Looking at it now I can't remember why I have it.
     # it is this way because I don't want the global lastFoundIndex to get modified in this function, instead, this function returns the updated lastFoundIndex value
     # this function will be feed into another function for creating animation
-    def pure_pursuit_step(self, path, currentPos, currentHeading, lookAheadDis, LFindex):
-        global lastFoundIndex, linearVel, pi, fig, trajectory_lines
-        global trajectory_line, heading_lines, heading_line, connection_lines, connection_line, poses, pose, dt, xs, ys, using_rotation
-
+    def pure_pursuit_step(self, path, robot, pi):
         # extract currentX and currentY
-        currentX = currentPos[0]
-        currentY = currentPos[1]
+        current_x = robot[0]
+        current_y = robot[1]
 
         # use for loop to search intersections
-        lastFoundIndex = LFindex
-        intersectFound = False
+        last_found_index = robot.last_found_index
+        intersect_found = False
 
-        startingIndex = lastFoundIndex
+        starting_index = last_found_index
 
-        for i in range(startingIndex, len(path) - 1):
+        for i in range(starting_index, len(path) - 1):
 
             # beginning of line-circle intersection code
-            x1 = path[i][0] - currentX
-            y1 = path[i][1] - currentY
-            x2 = path[i + 1][0] - currentX
-            y2 = path[i + 1][1] - currentY
+            x1 = path[i][0] - current_x
+            y1 = path[i][1] - current_y
+            x2 = path[i + 1][0] - current_x
+            y2 = path[i + 1][1] - current_y
             dx = x2 - x1
             dy = y2 - y1
             dr = math.sqrt(dx ** 2 + dy ** 2)
             D = x1 * y2 - x2 * y1
-            discriminant = (lookAheadDis ** 2) * (dr ** 2) - D ** 2
+            discriminant = (robot.look_ahead_dist ** 2) * (dr ** 2) - D ** 2
 
             if discriminant >= 0:
                 sol_x1 = (D * dy + self.sgn(dy) * dx * np.sqrt(discriminant)) / dr ** 2
@@ -166,232 +176,65 @@ class PurePursuit:
                 sol_y1 = (- D * dx + abs(dy) * np.sqrt(discriminant)) / dr ** 2
                 sol_y2 = (- D * dx - abs(dy) * np.sqrt(discriminant)) / dr ** 2
 
-                sol_pt1 = [sol_x1 + currentX, sol_y1 + currentY]
-                sol_pt2 = [sol_x2 + currentX, sol_y2 + currentY]
+                sol_pt1 = [sol_x1 + current_x, sol_y1 + current_y]
+                sol_pt2 = [sol_x2 + current_x, sol_y2 + current_y]
                 # end of line-circle intersection code
 
-                minX = min(path[i][0], path[i + 1][0])
-                minY = min(path[i][1], path[i + 1][1])
-                maxX = max(path[i][0], path[i + 1][0])
-                maxY = max(path[i][1], path[i + 1][1])
+                min_x = min(path[i][0], path[i + 1][0])
+                min_y = min(path[i][1], path[i + 1][1])
+                max_x = max(path[i][0], path[i + 1][0])
+                max_y = max(path[i][1], path[i + 1][1])
 
                 # if one or both of the solutions are in range
-                if ((minX <= sol_pt1[0] <= maxX) and (minY <= sol_pt1[1] <= maxY)) or (
-                        (minX <= sol_pt2[0] <= maxX) and (minY <= sol_pt2[1] <= maxY)):
-
-                    foundIntersection = True
+                if ((min_x <= sol_pt1[0] <= max_x) and (min_y <= sol_pt1[1] <= max_y)) or (
+                        (min_x <= sol_pt2[0] <= max_x) and (min_y <= sol_pt2[1] <= max_y)):
 
                     # make the decision by compare the distance between the intersections and the next point in path
-                    if not (minX <= sol_pt1[1] <= maxX) and (minY <= sol_pt1[1] <= maxY) or self.pt_to_pt_distance(sol_pt1, path[i + 1]) < self.pt_to_pt_distance(sol_pt2, path[i + 1]):
-                        goalPt = sol_pt1
+                    if not (min_x <= sol_pt1[1] <= max_x) and (min_y <= sol_pt1[1] <= max_y) or self.pt_to_pt_distance(
+                            sol_pt1, path[i + 1]) < self.pt_to_pt_distance(sol_pt2, path[i + 1]):
+                        goal_pt = sol_pt1
                     else:
-                        goalPt = sol_pt2
+                        goal_pt = sol_pt2
 
                     # only exit loop if the solution pt found is closer to the next pt in path than the current pos
-                    if self.pt_to_pt_distance(goalPt, path[i + 1]) < self.pt_to_pt_distance([currentX, currentY], path[i + 1]):
+                    if self.pt_to_pt_distance(goal_pt, path[i + 1]) < self.pt_to_pt_distance([current_x, current_y],
+                                                                                             path[i + 1]):
                         # update lastFoundIndex and exit
-                        lastFoundIndex = i
+                        last_found_index = i
                         break
                     else:
-                        # in case for some reason the robot cannot find intersection in the next path segment, but we also don't want it to go backward
-                        lastFoundIndex = i + 1
+                        # in case for some reason the robot cannot find intersection in the next path segment,
+                        # but we also don't want it to go backward
+                        last_found_index = i + 1
 
                 # if no solutions are in range
                 else:
-                    foundIntersection = False
                     # no new intersection found, potentially deviated from the path
                     # follow path[lastFoundIndex]
-                    goalPt = [path[lastFoundIndex][0], path[lastFoundIndex][1]]
+                    goal_pt = [path[last_found_index][0], path[last_found_index][1]]
         else:
             try:
-                goalPt
+                goal_pt
             except NameError:
-                goalPt = path1[0]
+                goal_pt = path1[0]
         # obtained goal point, now compute turn vel
         # initialize proportional controller constant
         Kp = 3
 
         # calculate absTargetAngle with the atan2 function
-        absTargetAngle = math.atan2(goalPt[1] - currentPos[1], goalPt[0] - currentPos[0]) * 180 / pi
-        if absTargetAngle < 0: absTargetAngle += 360
+        abs_target_angle = math.atan2(goal_pt[1] - robot[1], goal_pt[0] - robot[0]) * 180 / pi
+        if abs_target_angle < 0: abs_target_angle += 360
 
         # compute turn error by finding the minimum angle
-        turnError = absTargetAngle - currentHeading
-        if turnError > 180 or turnError < -180:
-            turnError = -1 * self.sgn(turnError) * (360 - abs(turnError))
+        turn_error = abs_target_angle - robot.current_heading
+        if turn_error > 180 or turn_error < -180:
+            turn_error = -1 * self.sgn(turn_error) * (360 - abs(turn_error))
 
         # apply proportional controller
-        turnVel = Kp * turnError
+        turn_vel = Kp * turn_error
 
-        return goalPt, lastFoundIndex, turnVel
+        return goal_pt, last_found_index, turn_vel
 
-class Buttons:
-    def __init__(self):
-        self.add_waypoints_pressed = False
-        self.remove_waypoints_pressed = False
-        self.is_dragging = False
-        self.visible_waypoint_selector = -1
-        self.waypoint_selector = -1
-        self.INTERACTION_DIST = 0.5
-
-    def addWayPoints(self, event):
-        global bWaypoints, b_remove_waypoints
-        self.add_waypoints_pressed = not self.add_waypoints_pressed
-
-        if self.add_waypoints_pressed:
-            if self.remove_waypoints_pressed:
-                self.remove_waypoints_pressed = False
-                self.change_button_colors(b_remove_waypoints)
-            self.change_button_colors(bWaypoints, 'green', "lightgreen")
-        else:
-            self.change_button_colors(bWaypoints)
-
-        plt.draw()
-
-    def change_button_colors(self, button, color1="lightgrey", color2="white"):
-        button.color = color1
-        button.hovercolor = color2
-
-    def remove_graph_waypoint(self, event):
-        if len(path1) <= 1:
-            self.reset_graph()
-            return
-
-        ndx, distance = self.find_nearest_waypoint([event.xdata, event.ydata], path1)
-        if distance < self.INTERACTION_DIST:
-            path1.pop(ndx)
-
-    def add_graph_waypoint(self, event):
-        self.update_visible_selector(event)
-        if self.waypoint_selector == -1:
-            path1.append(Waypoint(event.xdata, event.ydata))
-        else:
-            path1.insert(self.waypoint_selector + 1, Waypoint(event.xdata, event.ydata))
-            self.waypoint_selector += 1
-
-    def update_path(self):
-        # Convert path1 to a NumPy array of shape (N, 2)
-        path_for_graph = np.array(convert_poses(path1))
-
-        # Update the plot with the new path
-        if len(path1) > 0:
-            for line in path:
-                line.set_data(path_for_graph[:, 0], path_for_graph[:, 1])  # Set the new path data
-
-    def when_dragging(self, event):
-        if event.inaxes == fig.axes[0]:
-            if self.is_dragging:
-                if self.add_waypoints_pressed:
-                    self.add_graph_waypoint(event)
-                if self.remove_waypoints_pressed:
-                    self.remove_graph_waypoint(event)
-
-                self.update_path()
-            else:
-                self.update_visible_selector(event)
-                if self.visible_waypoint_selector > -1:
-                    highlight_waypoint.set_data([path1[self.visible_waypoint_selector][0]], [path1[self.visible_waypoint_selector][1]])
-                    highlight_waypoint.set_visible(True)
-                else:
-                    highlight_waypoint.set_visible(False)
-
-        plt.draw()
-
-    def on_release(self, event):
-        self.is_dragging = False
-
-    def reset(self, event):
-        self.reset_graph()
-
-    def reset_graph(self):
-        global path, path1, trajectory_line, xs, ys
-        path1 = []
-        for line in path:
-            line.set_data([], [])
-        self.clear_graph_trajectory_lines()
-        plt.draw()
-
-    def on_mouse_click(self, event):
-        global path1, path
-        if event.inaxes == fig.axes[0]:
-            if event.button == 1:
-                if self.add_waypoints_pressed:
-                    # Append the clicked point as a tuple/list
-                    # print(f"{event.xdata}, {event.ydata}")
-                    self.is_dragging = True
-                    if len(path1) > 0:
-                        ndx, distance = self.find_nearest_waypoint([event.xdata, event.ydata], path1)
-                        if distance < self.INTERACTION_DIST and ndx == 0:
-                            path1.append(path1[0])
-                        else:
-                            self.add_graph_waypoint(event)
-                    else:
-                        self.add_graph_waypoint(event)  # Use append to add a new point as a list
-
-                    self.update_path()
-
-                elif self.remove_waypoints_pressed:
-                    # print(self.find_nearest_waypoint([event.xdata, event.ydata], path1))
-                    self.is_dragging = True
-
-                    self.remove_graph_waypoint(event)
-
-                    self.update_path()
-            else:
-                self.update_visible_selector(event)
-                if event.button == 2 or event.button == 3:
-                    self.waypoint_selector = self.visible_waypoint_selector
-            plt.draw()  # Ensure the plot updates after the click
-
-    def update_visible_selector(self, event):
-        if len(path1) >= 1:
-            ndx, distance = self.find_nearest_waypoint([event.xdata, event.ydata], path1)
-            if distance < self.INTERACTION_DIST:
-                self.visible_waypoint_selector = ndx
-                #print(f"{self.visible_waypoint_selector}, {self.waypoint_selector}")
-                return
-        self.visible_waypoint_selector = -1
-        #print(f"{self.visible_waypoint_selector}, {self.waypoint_selector}")
-
-    def clear_trajectory_lines(self, event):
-        self.clear_graph_trajectory_lines()
-        plt.draw()
-
-    def clear_graph_trajectory_lines(self):
-        global xs, ys, trajectory_line
-        xs = []
-        ys = []
-        trajectory_line.set_data([], [])
-
-    def remove_waypoint(self, event):
-        global b_remove_waypoints, bWaypoints
-        self.remove_waypoints_pressed = not self.remove_waypoints_pressed
-
-        if self.remove_waypoints_pressed:
-            if self.add_waypoints_pressed:
-                self.add_waypoints_pressed = False
-                self.change_button_colors(bWaypoints)
-            self.change_button_colors(b_remove_waypoints, "red", "lightcoral")
-        else:
-            self.change_button_colors(b_remove_waypoints)
-
-        plt.draw()
-
-    def find_nearest_waypoint(self, current_position, waypoints):
-        # Convert waypoints to a NumPy array if it's not already
-        waypoints = np.array(convert_poses(waypoints))
-
-        # Handle the edge case where there are no waypoints
-        if len(waypoints) == 0:
-            return -1
-
-        # Calculate the distances between the current position and each waypoint
-        distances = np.linalg.norm(waypoints - current_position, axis=1)
-
-        # Find the index of the nearest waypoint
-        nearest_index = int(np.argmin(distances))  # Ensure compatibility with Python lists
-
-        return nearest_index, distances[nearest_index]
 
 class Waypoint:
     def __init__(self, x=0, y=0, is_anchor=False):
@@ -405,54 +248,54 @@ class Waypoint:
     def get_pos(self):
         return [self.x, self.y]
 
+
 def convert_poses(waypoints):
     return [waypoint.get_pos() for waypoint in waypoints]
 
-def pure_pursuit_animation(frame):
-    # define globals
-    global currentPos, currentHeading, lastFoundIndex, lookAheadDis, linearVel, pi, fig, trajectory_lines
-    global trajectory_line, heading_lines, heading_line, connection_lines, connection_line, poses, pose, dt, xs, ys, using_rotation, next_point_ndx
 
+def pure_pursuit_animation(frame, robot: Robot, heading_line, pose, connection_line, trail_line_x, trail_line_y,
+                           trail_line, pi, using_rotation):
     # for the animation to loop
-    if lastFoundIndex >= len(path1) - 2: lastFoundIndex = 0
+    if robot.last_found_index >= len(path1) - 2: robot.last_found_index = 0
     # if len(path1) > 0:
     #     print(f"{lastFoundIndex}, {path1[0]}")
 
     # call pure_pursuit_step to get info
     if len(path1) > 0:
-        goalPt, lastFoundIndex, turnVel = PurePursuit().pure_pursuit_step(
-            path1, currentPos, currentHeading, lookAheadDis, lastFoundIndex, next_point_ndx
+        goal_pt, last_found_index, turn_vel = Pure_Pursuit().pure_pursuit_step(
+            path1, robot, pi
         )
 
         # model: 200rpm drive with 18" width
         #               rpm   /s  circ   feet
-        maxLinVelfeet = 200 / 60 * pi * 4 / (12)
+        max_lin_vel_feet = 200 / 60 * pi * 4 / 12
         #               rpm   /s  center angle   deg
-        maxTurnVelDeg = 200 / 60 * pi * 4 / 9 * 180 / pi
+        max_turn_vel_deg = 200 / 60 * pi * 4 / 9 * 180 / pi
 
         # update x and y, but x and y stays constant here
-        stepDis = linearVel / 100 * maxLinVelfeet * dt / 1000
-        currentPos[0] += stepDis * np.cos(currentHeading * pi / 180)
-        currentPos[1] += stepDis * np.sin(currentHeading * pi / 180)
+        step_dis = robot.linear_vel / 100 * max_lin_vel_feet * robot.dt / 1000
+        robot[0] += step_dis * np.cos(robot.current_heading * pi / 180)
+        robot[1] += step_dis * np.sin(robot.current_heading * pi / 180)
 
-        heading_line.set_data([currentPos[0], currentPos[0] + 0.5 * np.cos(currentHeading / 180 * pi)],
-                              [currentPos[1], currentPos[1] + 0.5 * np.sin(currentHeading / 180 * pi)])
-        connection_line.set_data([currentPos[0], goalPt[0]], [currentPos[1], goalPt[1]])
+        heading_line.set_data([robot[0], robot[0] + 0.5 * np.cos(robot.current_heading / 180 * pi)],
+                              [robot[1], robot[1] + 0.5 * np.sin(robot.current_heading / 180 * pi)])
+        connection_line.set_data([robot[0], goal_pt[0]], [robot[1], goal_pt[1]])
 
-        currentHeading += turnVel / 100 * maxTurnVelDeg * dt / 1000
+        robot.current_heading += turn_vel / 100 * max_turn_vel_deg * robot.dt / 1000
         if not using_rotation:
-            currentHeading = currentHeading % 360
-            if currentHeading < 0: currentHeading += 360
+            robot.current_heading = robot.current_heading % 360
+            if robot.current_heading < 0: robot.current_heading += 360
 
         # rest of the animation code
-        xs.append(currentPos[0])
-        ys.append(currentPos[1])
+        trail_line_x.append(robot[0])
+        trail_line_y.append(robot[1])
 
-        pose.set_data([currentPos[0]], [currentPos[1]])
-        trajectory_line.set_data(xs, ys)
+        pose.set_data([robot[0]], [robot[1]])
+        trail_line.set_data(trail_line_x, trail_line_y)
+
 
 def main():
-    global path1;
+    global path1
     path1 = [Waypoint(x, y) for x, y in path1]
     animationObj = Animation()
     animationObj.showAnimation()

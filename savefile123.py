@@ -421,7 +421,7 @@ def pure_pursuit_animation(frame):
     # call pure_pursuit_step to get info
     if len(path1) > 0:
         goalPt, lastFoundIndex, turnVel = PurePursuit().pure_pursuit_step(
-            path1, currentPos, currentHeading, lookAheadDis, lastFoundIndex, next_point_ndx
+            path1, currentPos, currentHeading, lookAheadDis, lastFoundIndex
         )
 
         # model: 200rpm drive with 18" width
