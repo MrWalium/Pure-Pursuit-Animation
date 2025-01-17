@@ -32,23 +32,6 @@ path1 = [[0.0, 0.0], [0.571194595265405, -0.4277145118491421], [1.14175372801428
          [0.571194595265405, -0.4277145118491421]]
 
 
-class Robot:
-    def __init__(self):
-        self.current_pos = [0, 0]
-        self.current_heading = 330
-        self.last_found_index = 0
-        self.next_point_ndx = 1
-        self.look_ahead_dist = 0.8
-        self.linear_vel = 100
-        self.dt = 50
-
-    def __getitem__(self, item):
-        return self.current_pos[0] if item == 0 else self.current_pos[1]
-
-    def __setitem__(self, key, value):
-        self.current_pos[key] = value
-
-
 class Animation:
     def __init__(self):
         # set this to true if you use rotations
@@ -235,6 +218,22 @@ class Pure_Pursuit:
 
         return goal_pt, last_found_index, turn_vel
 
+
+class Robot:
+    def __init__(self):
+        self.current_pos = [0, 0]
+        self.current_heading = 330
+        self.last_found_index = 0
+        self.next_point_ndx = 1
+        self.look_ahead_dist = 0.8
+        self.linear_vel = 100
+        self.dt = 50
+
+    def __getitem__(self, item):
+        return self.current_pos[0] if item == 0 else self.current_pos[1]
+
+    def __setitem__(self, key, value):
+        self.current_pos[key] = value
 
 class Waypoint:
     def __init__(self, x=0, y=0, is_anchor=False):
