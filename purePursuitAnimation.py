@@ -349,27 +349,36 @@ class Pure_Pursuit:
                         (min_x <= sol_pt2[0] <= max_x) and (min_y <= sol_pt2[1] <= max_y)):
 
                     # make the decision by compare the distance between the intersections and the next point in path
-                    if (not (min_x <= sol_pt1[1] <= max_x) and (min_y <= sol_pt1[1] <= max_y)) or self.pt_to_pt_distance(
-                            sol_pt1, path[starting_index_incremented]) < self.pt_to_pt_distance(sol_pt2, path[
-                            starting_index_incremented]):
+                    if (min_x <= sol_pt2[0] <= max_x) and (min_y <= sol_pt2[1] <= max_y) or \
+                            (min_x <= sol_pt1[0] <= max_x) and (min_y <= sol_pt1[1] <= max_y) and \
+                            self.pt_to_pt_distance(sol_pt1, path[robot.next_point_ndx]) < \
+                            self.pt_to_pt_distance(sol_pt2, path[robot.next_point_ndx]):
                         goal_pt = sol_pt1
                         print(f"sol1, {convert_poses(path)[starting_index_incremented]}")
                     else:
                         goal_pt = sol_pt2
                         print(f"sol2, {convert_poses(path)[starting_index_incremented]}")
 
+                    robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path) - 1)
+
+                    if self.pt_to_pt_distance(path[robot.next_point_ndx].get_pos(), robot.current_pos) < robot.look_ahead_dist:
+                        robot.next_point_ndx = increment_val(robot.next_point_ndx, 1, len(path) - 1)
+                    print(robot.next_point_ndx)
+
                     # only exit loop if the solution pt found is closer to the next pt in path than the current pos
                     if self.pt_to_pt_distance(goal_pt, path[starting_index_incremented]) < self.pt_to_pt_distance(
                             [current_x, current_y],
-                            path[starting_index_incremented]):
+                            path[robot.next_point_ndx]):
                         # update lastFoundIndex and exit
-                        #robot.last_found_index = starting_index
+                        robot.last_found_index = starting_index
+                        robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path) - 1)
                         print(robot.last_found_index)
                         break
                     else:
                         # in case for some reason the robot cannot find intersection in the next path segment,
                         # but we also don't want it to go backward
                         robot.last_found_index = starting_index_incremented
+                        robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path)-1)
 
                 # if no solutions are in range
                 else:
