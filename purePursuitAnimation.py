@@ -31,8 +31,8 @@ class Animation:
                       [-4.111620918085742, 1.8386823176628544], [-3.7524648889185794, 2.1224985058331005],
                       [-3.3123191098095615, 2.153588702898333], [-2.80975246649598, 1.9712114570096653],
                       [-2.268856462266256, 1.652958931009528], [-1.709001159778989, 1.2664395490411673],
-                      [-1.1413833971013372, 0.8517589252820573], [-0.5710732645795573, 0.4272721367616211], [0, 0],
-                      [0.571194595265405, -0.4277145118491421]]
+                      [-1.1413833971013372, 0.8517589252820573], [-0.5710732645795573, 0.4272721367616211], [0, 0]]
+        # , [0, 0], [0.571194595265405, -0.4277145118491421]
 
         self.path1 = [Waypoint(x, y) for x, y in self.path1]
 
@@ -98,16 +98,19 @@ class Animation:
         button_reset.on_clicked(partial(callback.reset, path1=self.path1, path=self.path, xs=self.trail_line_x,
                                         ys=self.trail_line_y, trajectory_line=self.trail_line))
         button_clear_trail.on_clicked(partial(callback.clear_trajectory_lines, xs=self.trail_line_x,
-                                              ys=self.trail_line_y, trajecotry_line=self.trail_line))
-        remove_waypoints.on_clicked(partial(callback.remove_waypoint, bWaypoints=add_waypoints, b_remove_waypoints=remove_waypoints))
+                                              ys=self.trail_line_y, trajectory_line=self.trail_line))
+        remove_waypoints.on_clicked(
+            partial(callback.remove_waypoint, bWaypoints=add_waypoints, b_remove_waypoints=remove_waypoints))
 
-        self.fig.canvas.mpl_connect("button_press_event", partial(callback.on_mouse_click, fig=self.fig, path1=self.path1,
-                                                                  path=self.path, xs=self.trail_line_x,
-                                                                  ys=self.trail_line_y,
-                                                                  trajectory_line=self.trail_line))
+        self.fig.canvas.mpl_connect("button_press_event",
+                                    partial(callback.on_mouse_click, fig=self.fig, path1=self.path1,
+                                            path=self.path, xs=self.trail_line_x,
+                                            ys=self.trail_line_y,
+                                            trajectory_line=self.trail_line))
         self.fig.canvas.mpl_connect('motion_notify_event', partial(callback.when_dragging, fig=self.fig,
                                                                    path1=self.path1,
-                                                                   highlight_waypoint=self.highlight_waypoint, path=self.path,
+                                                                   highlight_waypoint=self.highlight_waypoint,
+                                                                   path=self.path,
                                                                    xs=self.trail_line_x, ys=self.trail_line_y,
                                                                    trajectory_line=self.trail_line))
         self.fig.canvas.mpl_connect('button_release_event', callback.on_release)
@@ -304,7 +307,7 @@ class Pure_Pursuit:
     # it is this way because I don't want the global lastFoundIndex to get modified in this function, instead, this function returns the updated lastFoundIndex value
     # this function will be feed into another function for creating animation
     def pure_pursuit_step(self, path, robot, pi):
-        #print(f"{robot.last_found_index}, {convert_poses(path)[robot.last_found_index]}, {convert_poses(path)}")
+        # print(f"{robot.last_found_index}, {convert_poses(path)[robot.last_found_index]}, {convert_poses(path)}")
 
         # extract currentX and currentY
         current_x = robot[0]
@@ -329,7 +332,7 @@ class Pure_Pursuit:
             D = x1 * y2 - x2 * y1
             discriminant = (robot.look_ahead_dist ** 2) * (dr ** 2) - D ** 2
 
-            if discriminant >= 0:
+            if discriminant >= 0 and dr != 0:
                 sol_x1 = (D * dy + self.sgn(dy) * dx * np.sqrt(discriminant)) / dr ** 2
                 sol_x2 = (D * dy - self.sgn(dy) * dx * np.sqrt(discriminant)) / dr ** 2
                 sol_y1 = (- D * dx + abs(dy) * np.sqrt(discriminant)) / dr ** 2
@@ -354,31 +357,32 @@ class Pure_Pursuit:
                              self.pt_to_pt_distance(sol_pt1, path[robot.next_point_ndx]) <
                              self.pt_to_pt_distance(sol_pt2, path[robot.next_point_ndx])):
                         goal_pt = sol_pt1
-                        print(f"      sol1, {convert_poses(path)[robot.next_point_ndx]}")
+                        # print(f"      sol1, {convert_poses(path)[robot.next_point_ndx]}")
                     else:
                         goal_pt = sol_pt2
-                        print(f"      sol2, {convert_poses(path)[starting_index_incremented]}")
+                        # print(f"      sol2, {convert_poses(path)[starting_index_incremented]}")
 
-                    if self.pt_to_pt_distance(path[robot.next_point_ndx].get_pos(), robot.current_pos) < robot.look_ahead_dist:
+                    if self.pt_to_pt_distance(path[robot.next_point_ndx].get_pos(),
+                                              robot.current_pos) < robot.look_ahead_dist:
                         robot.next_point_ndx = increment_val(robot.next_point_ndx, 1, len(path) - 1)
                         robot.last_found_index = increment_val(robot.last_found_index, 1, len(path) - 1)
-                    print(f"next point: {robot.next_point_ndx}")
+                    # print(f"next point: {robot.next_point_ndx}")
 
                     # only exit loop if the solution pt found is closer to the next pt in path than the current pos
                     if self.pt_to_pt_distance(goal_pt, path[robot.next_point_ndx]) < self.pt_to_pt_distance(
                             [current_x, current_y],
                             path[robot.next_point_ndx]):
                         # update lastFoundIndex and exit
-                        robot.last_found_index = starting_index
+                        # robot.last_found_index = starting_index
                         robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path) - 1)
-                        print(f"last found: {robot.last_found_index}")
+                        # print(f"last found: {robot.last_found_index}")
                         break
                     else:
                         # in case for some reason the robot cannot find intersection in the next path segment,
                         # but we also don't want it to go backward
                         robot.last_found_index = starting_index_incremented
-                        robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path)-1)
-                        print(f"last found: {robot.last_found_index}")
+                        robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path) - 1)
+                        # print(f"last found: {robot.last_found_index}")
 
                 # if no solutions are in range
                 else:
