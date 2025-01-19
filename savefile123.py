@@ -175,6 +175,8 @@ class PurePursuit:
                 maxX = max(path[i][0], path[i + 1][0])
                 maxY = max(path[i][1], path[i + 1][1])
 
+                # print(i)
+
                 # if one or both of the solutions are in range
                 if ((minX <= sol_pt1[0] <= maxX) and (minY <= sol_pt1[1] <= maxY)) or (
                         (minX <= sol_pt2[0] <= maxX) and (minY <= sol_pt2[1] <= maxY)):
@@ -423,6 +425,8 @@ def pure_pursuit_animation(frame):
         goalPt, lastFoundIndex, turnVel = PurePursuit().pure_pursuit_step(
             path1, currentPos, currentHeading, lookAheadDis, lastFoundIndex
         )
+
+        # print()
 
         # model: 200rpm drive with 18" width
         #               rpm   /s  circ   feet

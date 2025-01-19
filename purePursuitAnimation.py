@@ -347,6 +347,9 @@ class Pure_Pursuit:
                 max_x = max(path[starting_index][0], path[starting_index_incremented][0])
                 max_y = max(path[starting_index][1], path[starting_index_incremented][1])
 
+                next_point = path[starting_index_incremented] if path[robot.next_point_ndx].is_anchor \
+                    else robot.next_point_ndx
+
                 # if one or both of the solutions are in range
                 if ((min_x <= sol_pt1[0] <= max_x) and (min_y <= sol_pt1[1] <= max_y)) or (
                         (min_x <= sol_pt2[0] <= max_x) and (min_y <= sol_pt2[1] <= max_y)):
@@ -362,16 +365,16 @@ class Pure_Pursuit:
                         goal_pt = sol_pt2
                         # print(f"      sol2, {convert_poses(path)[starting_index_incremented]}")
 
-                    if self.pt_to_pt_distance(path[robot.next_point_ndx].get_pos(),
+                    if self.pt_to_pt_distance(path[next_point].get_pos(),
                                               robot.current_pos) < robot.look_ahead_dist:
                         robot.next_point_ndx = increment_val(robot.next_point_ndx, 1, len(path) - 1)
                         robot.last_found_index = increment_val(robot.last_found_index, 1, len(path) - 1)
                     # print(f"next point: {robot.next_point_ndx}")
 
                     # only exit loop if the solution pt found is closer to the next pt in path than the current pos
-                    if self.pt_to_pt_distance(goal_pt, path[robot.next_point_ndx]) < self.pt_to_pt_distance(
+                    if self.pt_to_pt_distance(goal_pt, path[next_point]) < self.pt_to_pt_distance(
                             [current_x, current_y],
-                            path[robot.next_point_ndx]):
+                            path[next_point]):
                         # update lastFoundIndex and exit
                         # robot.last_found_index = starting_index
                         robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path) - 1)
