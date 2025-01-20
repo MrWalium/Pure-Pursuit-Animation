@@ -306,6 +306,15 @@ class Pure_Pursuit:
     # the LFindex takes in the value of lastFoundIndex as input. Looking at it now I can't remember why I have it.
     # it is this way because I don't want the global lastFoundIndex to get modified in this function, instead, this function returns the updated lastFoundIndex value
     # this function will be feed into another function for creating animation
+    """
+        Find solutions (circle line intersection forumula)
+        
+        If there's solutions,
+        
+        Find the one that gives you the most progress towards the next point
+        
+        else go to the last found goal point.
+    """
     def pure_pursuit_step(self, path, robot, pi):
         # print(f"{robot.last_found_index}, {convert_poses(path)[robot.last_found_index]}, {convert_poses(path)}")
 
