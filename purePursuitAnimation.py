@@ -316,36 +316,25 @@ class Pure_Pursuit:
         else go to the last found goal point.
     """
     def pure_pursuit_step(self, path, robot, pi):
-        # print(f"{robot.last_found_index}, {convert_poses(path)[robot.last_found_index]}, {convert_poses(path)}")
-
-        # extract currentX and currentY
-        current_x = robot[0]
-        current_y = robot[1]
-
         # use for loop to search intersections
 
         starting_index = robot.last_found_index
 
         goal_pts = list()
 
-        # print(f"start: {starting_index}, {robot.next_point_ndx}")
-
-        # for i in range(starting_index, len(path) - 1):
         for i in range(0, len(path) - 1):
             starting_index_incremented = increment_val(starting_index, 1, len(path) - 1)
 
             # beginning of line-circle intersection code
-            x1 = path[starting_index][0] - current_x
-            y1 = path[starting_index][1] - current_y
-            x2 = path[starting_index_incremented][0] - current_x
-            y2 = path[starting_index_incremented][1] - current_y
+            x1 = path[starting_index][0] - robot[0]
+            y1 = path[starting_index][1] - robot[1]
+            x2 = path[starting_index_incremented][0] - robot[0]
+            y2 = path[starting_index_incremented][1] - robot[1]
             dx = x2 - x1
             dy = y2 - y1
             dr = math.sqrt(dx ** 2 + dy ** 2)
             D = x1 * y2 - x2 * y1
             discriminant = (robot.look_ahead_dist ** 2) * (dr ** 2) - D ** 2
-
-            # print(f"      {(robot.look_ahead_dist ** 2) * (dr ** 2)}, {D**2}")
 
             if discriminant >= 0 and dr != 0:
                 sol_x1 = (D * dy + self.sgn(dy) * dx * np.sqrt(discriminant)) / dr ** 2
@@ -353,8 +342,8 @@ class Pure_Pursuit:
                 sol_y1 = (- D * dx + abs(dy) * np.sqrt(discriminant)) / dr ** 2
                 sol_y2 = (- D * dx - abs(dy) * np.sqrt(discriminant)) / dr ** 2
 
-                sol_pt1 = [sol_x1 + current_x, sol_y1 + current_y]
-                sol_pt2 = [sol_x2 + current_x, sol_y2 + current_y]
+                sol_pt1 = [sol_x1 + robot[0], sol_y1 + robot[1]]
+                sol_pt2 = [sol_x2 + robot[0], sol_y2 + robot[1]]
                 # end of line-circle intersection code
 
                 min_x = min(path[starting_index][0], path[starting_index_incremented][0])
@@ -387,41 +376,27 @@ class Pure_Pursuit:
 
                     # only exit loop if the solution pt found is closer to the next pt in path than the current pos
                     if self.pt_to_pt_distance(goal_pt, path[next_point]) < self.pt_to_pt_distance(
-                            [current_x, current_y],
+                            robot.current_pos,
                             path[next_point]):
                         # update lastFoundIndex and exit
                         robot.last_found_index = starting_index
                         robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path) - 1)
-                        # break
                     else:
                         # in case for some reason the robot cannot find intersection in the next path segment,
                         # but we also don't want it to go backward
                         robot.last_found_index = starting_index_incremented
-                        # robot.last_found_index = increment_val(robot.last_found_index, 1, len(path) - 1)
                         robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path) - 1)
-
-                    print(goal_pts)
-                    # if len(goal_pts) > 1 and self.pt_to_pt_distance(goal_pts[-1], robot.current_pos) > self.pt_to_pt_distance(goal_pts[-2], robot.current_pos):
-                    #     goal_pt = goal_pts[-2]
-                    #     break
 
                 # if no solutions are in range
                 else:
                     # no new intersection found, potentially deviated from the path
                     # follow path[lastFoundIndex]
                     goal_pt = [path[robot.last_found_index][0], path[robot.last_found_index][1]]
-                    # goal_pts.append(goal_pt)
-            # else:
-                # print(f"happened sflksj, {discriminant >= 0}, {dr != 0}")
-            # print(f"       {starting_index}, {robot.next_point_ndx}")
 
             if path[starting_index].is_anchor and self.pt_to_pt_distance(path[starting_index], robot.current_pos) > robot.look_ahead_dist:
-                # print(path[starting_index].is_anchor)
                 break
 
             starting_index = increment_val(starting_index, 1, len(path) - 1)
-
-        # print(starting_index)
 
         try:
             goal_pt
@@ -435,10 +410,6 @@ class Pure_Pursuit:
         # initialize proportional controller constant
         Kp = 3
 
-        # print(goal_pt, goal_pts)
-
-        #goal_pt = goal_pts[]
-
         # calculate absTargetAngle with the atan2 function
         abs_target_angle = math.atan2(goal_pt[1] - robot[1], goal_pt[0] - robot[0]) * 180 / pi
         if abs_target_angle < 0: abs_target_angle += 360
@@ -450,8 +421,6 @@ class Pure_Pursuit:
 
         # apply proportional controller
         turn_vel = Kp * turn_error
-
-        print()
 
         return goal_pt, robot.last_found_index, turn_vel
 
