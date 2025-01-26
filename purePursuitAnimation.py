@@ -16,7 +16,7 @@ class Animation:
                       [2.8121159420106827, -1.9791445882187304], [3.314589274316711, -2.159795566252656],
                       [3.7538316863009027, -2.1224619985315876], [4.112485112342358, -1.8323249172947023],
                       [4.383456805594431, -1.3292669972090994], [4.557386228943757, -0.6928302521681386],
-                      [4.617455513800438, 0.00274597627737883], [4.55408382321606, 0.6984486966257434],
+                      [4.617455513800438, 0.00274597627737883, True], [4.55408382321606, 0.6984486966257434],
                       [4.376054025556597, 1.3330664239172116], [4.096280073621794, 1.827159263675668],
                       [3.719737492364894, 2.097949296701878], [3.25277928312066, 2.108933125822431],
                       [2.7154386886417314, 1.9004760368018616], [2.1347012144725985, 1.552342808106984],
@@ -26,7 +26,7 @@ class Animation:
                       [-2.1365993767877467, -1.5584414896876835], [-2.7180981380280307, -1.9086314914221845],
                       [-3.2552809639439704, -2.1153141204181285], [-3.721102967810494, -2.0979137913841046],
                       [-4.096907306768644, -1.8206318841755131], [-4.377088212533404, -1.324440752295139],
-                      [-4.555249804461285, -0.6910016662308593], [-4.617336323713965, 0.003734984720118972],
+                      [-4.555249804461285, -0.6910016662308593], [-4.617336323713965, 0.003734984720118972, True],
                       [-4.555948690867849, 0.7001491248072772], [-4.382109193278264, 1.3376838311365633],
                       [-4.111620918085742, 1.8386823176628544], [-3.7524648889185794, 2.1224985058331005],
                       [-3.3123191098095615, 2.153588702898333], [-2.80975246649598, 1.9712114570096653],
@@ -34,7 +34,7 @@ class Animation:
                       [-1.1413833971013372, 0.8517589252820573], [-0.5710732645795573, 0.4272721367616211], [0, 0]]
         # , [0, 0], [0.571194595265405, -0.4277145118491421]
 
-        self.path1 = [Waypoint(x, y) for x, y in self.path1]
+        self.path1 = [Waypoint(point[0], point[1]) if len(point) == 2 else Waypoint(point[0], point[1], point[2]) for point in self.path1]
 
         # set this to true if you use rotations
         self.using_rotation = False
@@ -379,10 +379,9 @@ class Pure_Pursuit:
                     else:
                         goal_pt = sol_pt2
 
-                    goal_pts.append(goal_pt)
+                    goal_pts.append([goal_pt[0], goal_pt[1]])
 
-                    if path[next_point].is_anchor and self.pt_to_pt_distance(path[next_point].get_pos(),
-                                              robot.current_pos) <= robot.look_ahead_dist:
+                    if self.pt_to_pt_distance(path[next_point], robot.current_pos) < robot.look_ahead_dist:
                         robot.next_point_ndx = increment_val(robot.next_point_ndx, 1, len(path) - 1)
                         robot.last_found_index = increment_val(robot.last_found_index, 1, len(path) - 1)
 
@@ -393,7 +392,7 @@ class Pure_Pursuit:
                         # update lastFoundIndex and exit
                         robot.last_found_index = starting_index
                         robot.next_point_ndx = increment_val(robot.last_found_index, 1, len(path) - 1)
-                        break
+                        # break
                     else:
                         # in case for some reason the robot cannot find intersection in the next path segment,
                         # but we also don't want it to go backward
@@ -411,10 +410,15 @@ class Pure_Pursuit:
                     # no new intersection found, potentially deviated from the path
                     # follow path[lastFoundIndex]
                     goal_pt = [path[robot.last_found_index][0], path[robot.last_found_index][1]]
-                    #goal_pts.append(goal_pt)
+                    # goal_pts.append(goal_pt)
             # else:
                 # print(f"happened sflksj, {discriminant >= 0}, {dr != 0}")
             # print(f"       {starting_index}, {robot.next_point_ndx}")
+
+            if path[starting_index].is_anchor and self.pt_to_pt_distance(path[starting_index], robot.current_pos) > robot.look_ahead_dist:
+                # print(path[starting_index].is_anchor)
+                break
+
             starting_index = increment_val(starting_index, 1, len(path) - 1)
 
         # print(starting_index)
@@ -423,6 +427,9 @@ class Pure_Pursuit:
             goal_pt
         except NameError:
             goal_pt = path[0]
+
+        if len(goal_pts) > 0:
+            goal_pt = goal_pts[-1]
 
         # obtained goal point, now compute turn vel
         # initialize proportional controller constant
@@ -467,7 +474,7 @@ class Robot:
 
 
 class Waypoint:
-    def __init__(self, x=0, y=0, is_anchor=False):
+    def __init__(self, x=0.0, y=0.0, is_anchor=False):
         self.x = x
         self.y = y
         self.is_anchor = is_anchor
